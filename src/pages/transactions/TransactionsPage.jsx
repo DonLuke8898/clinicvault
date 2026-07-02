@@ -16,11 +16,31 @@ const INCOME_PAY_METHODS = [
   { value: 'panel',    label: 'PANEL' },
 ]
 
+const EXPENSE_CATS_OPTIONS = [
+  { value: 'medicine',   label: 'MEDICINE / CONSUMABLES' },
+  { value: 'clinic',     label: 'CLINIC ITEMS' },
+  { value: 'locum',      label: 'LOCUM AND INCENTIVE' },
+  { value: 'stationery', label: 'STATIONERY' },
+  { value: 'printing',   label: 'PRINTING' },
+  { value: 'delivery',   label: 'LALAMOVE / GRABEXPRESS' },
+  { value: 'other',      label: 'LAIN-LAIN' },
+]
+
+const EXPENSE_PAY_METHODS = [
+  { value: 'cash',     label: 'CASH / COD' },
+  { value: 'transfer', label: 'ONLINE TRANSFER / TNG / QR PAY' },
+  { value: 'bnpl',     label: 'ATOME / SPAY LATER' },
+  { value: 'card',     label: 'DEBIT / CREDIT CARD' },
+]
+
 const CAT_LABELS = {
   consultation: 'Konsultasi', medication: 'Ubat', procedure: 'Prosedur',
   panel: 'Panel', lab: 'Makmal', other: 'Lain-lain',
   daily: 'Operasi Harian', hr: 'HR/Gaji', supplies: 'Bekalan',
   utility: 'Utiliti', rent: 'Sewa', equipment: 'Peralatan',
+  medicine: 'Medicine/Consumables', clinic: 'Clinic Items',
+  locum: 'Locum & Incentive', stationery: 'Stationery',
+  printing: 'Printing', delivery: 'Lalamove/GrabExpress',
 }
 
 const EMPTY_FORM = {
@@ -264,13 +284,13 @@ export default function TransactionsPage() {
                       <label className="label">Kategori</label>
                       <select className="input" value={form.cat} onChange={e => set('cat', e.target.value)}>
                         <option value="">Pilih...</option>
-                        {EXPENSE_CATS.map(c => <option key={c} value={c}>{CAT_LABELS[c]||c}</option>)}
+                        {EXPENSE_CATS_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="label">Kaedah Bayar</label>
                       <select className="input" value={form.pay_type} onChange={e => set('pay_type', e.target.value)}>
-                        {PAY_METHODS.map(m => <option key={m} value={m}>{m.toUpperCase()}</option>)}
+                        {EXPENSE_PAY_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                       </select>
                     </div>
                   </div>
