@@ -8,7 +8,7 @@ import {
 const NAV = [
   { to: '/',             icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: ArrowLeftRight,  label: 'Transaksi' },
-  { to: '/documents',    icon: FileText,         label: 'Dokumen' },
+  { to: '/documents',    icon: FileText,         label: 'Invois & Resit' },
   { to: '/panel',        icon: CreditCard,       label: 'Panel & Klaim' },
   { to: '/settings',     icon: Settings,         label: 'Tetapan' },
 ]
