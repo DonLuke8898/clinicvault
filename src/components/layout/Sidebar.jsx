@@ -2,8 +2,9 @@ import { NavLink } from 'react-router-dom'
 import { useStore } from '../../store/useStore'
 import { supabase } from '../../lib/supabase'
 import {
-  LayoutDashboard, ArrowLeftRight, FileText, CreditCard, Settings, LogOut, Building2
+  LayoutDashboard, ArrowLeftRight, FileText, CreditCard, Settings, LogOut
 } from 'lucide-react'
+import logo from '../../assets/logo.png'
 
 const NAV = [
   { to: '/',             icon: LayoutDashboard, label: 'Dashboard' },
@@ -24,13 +25,11 @@ export default function Sidebar({ onClose }) {
   return (
     <aside className="flex flex-col h-full bg-gradient-to-b from-slate-900 to-slate-800 text-white w-64">
       {/* Clinic Header */}
-      <div className="px-5 py-6 border-b border-slate-700">
+      <div className="px-5 py-5 border-b border-slate-700">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Building2 size={18} />
-          </div>
+          <img src={logo} alt="ClinicVault" className="w-10 h-10 object-contain flex-shrink-0" />
           <div className="min-w-0">
-            <p className="font-bold text-sm truncate">{clinicName}</p>
+            <p className="font-bold text-sm truncate text-white">{clinicName}</p>
             <p className="text-slate-400 text-xs truncate">{user?.email}</p>
           </div>
         </div>
