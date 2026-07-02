@@ -14,12 +14,19 @@ const NAV = [
   { to: '/settings',     icon: Settings,         label: 'Tetapan' },
 ]
 
+const ROLE_LABEL = { admin: 'Admin', doctor: 'Doktor', staff: 'Staff' }
+const ROLE_COLOR = {
+  admin:  'bg-purple-500/20 text-purple-300',
+  doctor: 'bg-blue-500/20 text-blue-300',
+  staff:  'bg-slate-500/20 text-slate-300',
+}
+
 export default function Sidebar({ onClose }) {
-  const { user, clinicName } = useStore()
+  const { user, clinicName, userRole } = useStore()
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    useStore.setState({ user: null, clinicId: null, income: [], expense: [], panel: [], documents: [] })
+    useStore.setState({ user: null, clinicId: null, userRole: null, income: [], expense: [], panel: [], documents: [] })
   }
 
   return (
@@ -31,6 +38,11 @@ export default function Sidebar({ onClose }) {
           <div className="min-w-0">
             <p className="font-bold text-sm truncate text-white">{clinicName}</p>
             <p className="text-slate-400 text-xs truncate">{user?.email}</p>
+            {userRole && (
+              <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_COLOR[userRole] || ROLE_COLOR.staff}`}>
+                {ROLE_LABEL[userRole] || userRole}
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ export const useStore = create((set, get) => ({
   user: null,
   clinicId: null,
   clinicName: 'ClinicVault',
+  userRole: null,   // 'admin' | 'doctor' | 'staff'
   loading: true,
 
   setUser: (user) => set({ user }),
@@ -46,17 +47,21 @@ export const useStore = create((set, get) => ({
     // Check if user already has a clinic
     const { data: memberships } = await supabase
       .from('clinic_members')
-      .select('clinic_id, clinics(id, name)')
+      .select('clinic_id, role, clinics(id, name)')
       .eq('user_id', userId)
       .limit(1)
 
     if (memberships?.length) {
       const c = memberships[0]
-      set({ clinicId: c.clinic_id, clinicName: c.clinics?.name || 'ClinicVault' })
+      set({
+        clinicId:   c.clinic_id,
+        clinicName: c.clinics?.name || 'ClinicVault',
+        userRole:   c.role || 'staff',
+      })
       return c.clinic_id
     }
 
-    // Create new clinic
+    // First time — create new clinic for this user
     const { data: clinic, error } = await supabase
       .from('clinics')
       .insert({ name: 'ClinicVault', tax_rate: 24, sst_enabled: false, owner_id: userId })
@@ -72,7 +77,42 @@ export const useStore = create((set, get) => ({
       .from('clinic_members')
       .insert({ clinic_id: clinic.id, user_id: userId, role: 'admin' })
 
-    set({ clinicId: clinic.id, clinicName: clinic.name })
+    set({ clinicId: clinic.id, clinicName: clinic.name, userRole: 'admin' })
     return clinic.id
+  },
+
+  // ── Join existing clinic via invite code ─────────────────
+  joinClinic: async (userId, code) => {
+    const { data: invite, error } = await supabase
+      .from('invitations')
+      .select('*, clinics(id, name)')
+      .eq('code', code.trim().toUpperCase())
+      .is('used_at', null)
+      .single()
+
+    if (error || !invite) {
+      return { error: 'Kod jemputan tidak sah atau telah digunakan.' }
+    }
+
+    const { error: memberErr } = await supabase
+      .from('clinic_members')
+      .insert({ clinic_id: invite.clinic_id, user_id: userId, role: invite.role })
+
+    if (memberErr) {
+      return { error: 'Gagal menyertai klinik: ' + memberErr.message }
+    }
+
+    await supabase
+      .from('invitations')
+      .update({ used_at: new Date().toISOString() })
+      .eq('id', invite.id)
+
+    set({
+      clinicId:   invite.clinic_id,
+      clinicName: invite.clinics?.name || 'ClinicVault',
+      userRole:   invite.role,
+    })
+
+    return { clinicId: invite.clinic_id }
   },
 }))
