@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore'
 import { supabase } from '../lib/supabase'
 import {
   Save, Building2, Users, UserPlus, Trash2,
-  Copy, Check, X, ShieldCheck, Stethoscope, UserRound, LogIn
+  Copy, Check, X, ShieldCheck, Stethoscope, UserRound, LogIn, ShieldAlert
 } from 'lucide-react'
 
 const ROLES = [
@@ -66,8 +66,13 @@ function PendingInvitations({ clinicId }) {
 
 // ─── Main SettingsPage ─────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const { clinicName, clinicId, userRole, user, setClinic, joinClinic, fetchAll } = useStore()
-  const isAdmin = userRole === 'admin'
+  const { clinicName, clinicId, userRole, user, setClinic, joinClinic, fetchAll,
+          isSuperAdmin, allClinics } = useStore()
+  const isAdmin = userRole === 'admin' || isSuperAdmin
+
+  // SA: pick which clinic to view/edit (independent of sidebar switcher)
+  const [saEditClinicId, setSaEditClinicId] = useState(null)
+  const effectiveClinicId = isSuperAdmin ? (saEditClinicId || clinicId) : clinicId
 
   const [tab, setTab] = useState('clinic')
 
@@ -110,10 +115,10 @@ export default function SettingsPage() {
   const [genCode,     setGenCode]     = useState(null)
   const [copied,      setCopied]      = useState(false)
 
-  // Load clinic details on mount
+  // Load clinic details when effectiveClinicId changes
   useEffect(() => {
-    if (!clinicId) return
-    supabase.from('clinics').select('*').eq('id', clinicId).single()
+    if (!effectiveClinicId) { setForm({ name: '', address: '', phone: '', email: '', kkm_no: '', ssm_no: '' }); return }
+    supabase.from('clinics').select('*').eq('id', effectiveClinicId).single()
       .then(({ data }) => {
         if (data) setForm({
           name:    data.name    || '',
@@ -124,26 +129,26 @@ export default function SettingsPage() {
           ssm_no:  data.ssm_no  || '',
         })
       })
-  }, [clinicId])
+  }, [effectiveClinicId])
 
   // Load members when switching to users tab
   useEffect(() => {
-    if (tab === 'users' && clinicId) fetchMembers()
-  }, [tab, clinicId])
+    if (tab === 'users' && effectiveClinicId) fetchMembers()
+  }, [tab, effectiveClinicId])
 
   async function fetchMembers() {
     setLoadingMembers(true)
     const { data } = await supabase
       .from('clinic_members')
       .select('user_id, role, profiles(full_name, email)')
-      .eq('clinic_id', clinicId)
+      .eq('clinic_id', effectiveClinicId)
     setMembers(data || [])
     setLoadingMembers(false)
   }
 
   async function handleSaveClinic(e) {
     e.preventDefault()
-    if (!clinicId || !form.name.trim()) return
+    if (!effectiveClinicId || !form.name.trim()) return
     setSaving(true)
     const { error } = await supabase.from('clinics').update({
       name:    form.name.trim(),
@@ -152,10 +157,10 @@ export default function SettingsPage() {
       email:   form.email,
       kkm_no:  form.kkm_no,
       ssm_no:  form.ssm_no,
-    }).eq('id', clinicId)
+    }).eq('id', effectiveClinicId)
     setSaving(false)
     if (!error) {
-      setClinic(clinicId, form.name.trim())
+      if (!isSuperAdmin) setClinic(effectiveClinicId, form.name.trim())
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     }
@@ -167,7 +172,7 @@ export default function SettingsPage() {
     const { data, error } = await supabase
       .from('invitations')
       .insert({
-        clinic_id:  clinicId,
+        clinic_id:  effectiveClinicId,
         email:      invite.email.trim().toLowerCase(),
         role:       invite.role,
         created_by: user?.id,
@@ -193,11 +198,11 @@ export default function SettingsPage() {
   }
 
   async function removeMember(uid) {
-    if (uid === user?.id) { alert('Anda tidak boleh memadam diri sendiri.'); return }
+    if (!isSuperAdmin && uid === user?.id) { alert('Anda tidak boleh memadam diri sendiri.'); return }
     if (!confirm('Padam pengguna ini dari klinik?')) return
     await supabase.from('clinic_members')
       .delete()
-      .eq('clinic_id', clinicId)
+      .eq('clinic_id', effectiveClinicId)
       .eq('user_id', uid)
     fetchMembers()
   }
@@ -210,6 +215,26 @@ export default function SettingsPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold text-slate-800">Tetapan</h1>
+
+      {/* SA: clinic picker */}
+      {isSuperAdmin && (
+        <div className="card p-4 flex items-center gap-3 border-l-4 border-amber-400">
+          <ShieldAlert size={18} className="text-amber-500 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-700 mb-1">Super Admin — Pilih Klinik untuk Dikemaskini</p>
+            <select
+              value={saEditClinicId || clinicId || ''}
+              onChange={e => setSaEditClinicId(e.target.value || null)}
+              className="input text-sm"
+            >
+              <option value="">— Pilih klinik —</option>
+              {allClinics.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Tab switcher */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
@@ -296,8 +321,8 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* ── Sertai Klinik Lain ──────────────────────────────────────────── */}
-      {tab === 'clinic' && (
+      {/* ── Sertai Klinik Lain (hanya untuk pengguna biasa) ──────────────── */}
+      {tab === 'clinic' && !isSuperAdmin && (
         <div className="card p-6 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
@@ -396,7 +421,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Pending invitations */}
-          <PendingInvitations clinicId={clinicId} />
+          <PendingInvitations clinicId={effectiveClinicId} />
 
           {/* Role legend */}
           <div className="card p-4">
