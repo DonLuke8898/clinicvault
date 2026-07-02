@@ -46,7 +46,7 @@ export default function App() {
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         useStore.setState({
-          clinicId: null, clinicName: 'ClinicVault', userRole: null,
+          clinicId: null, clinicName: 'ClinicVault', userRole: null, userClinics: [],
           isSuperAdmin: false, allClinics: [], activeClinicId: null,
           income: [], expense: [], panel: [], documents: [],
         })

@@ -7,6 +7,7 @@ export const useStore = create((set, get) => ({
   clinicId: null,
   clinicName: 'ClinicVault',
   userRole: null,       // 'admin' | 'doctor' | 'staff' | null
+  userClinics: [],      // all clinics this user belongs to
   isSuperAdmin: false,
   allClinics: [],       // SA: all clinics in the system
   activeClinicId: null, // SA: clinic being drilled into (null = overview)
@@ -71,6 +72,15 @@ export const useStore = create((set, get) => ({
     if (data) set({ allClinics: data })
   },
 
+  // ── Switch clinic for multi-clinic users ────────────────
+  switchClinic: async (clinicId) => {
+    const { userClinics } = get()
+    const target = userClinics.find(c => c.id === clinicId)
+    if (!target) return
+    set({ clinicId: target.id, clinicName: target.name, userRole: target.role })
+    await get().fetchAll()
+  },
+
   // ── SA: Switch active clinic (null = back to overview) ───
   setActiveClinic: async (clinicId) => {
     if (!clinicId) {
@@ -111,13 +121,19 @@ export const useStore = create((set, get) => ({
       .limit(1)
 
     if (memberships?.length) {
-      const c = memberships[0]
+      const userClinics = memberships.map(m => ({
+        id:   m.clinic_id,
+        name: m.clinics?.name || 'ClinicVault',
+        role: m.role || 'staff',
+      }))
+      const primary = memberships[0]
       set({
-        clinicId:   c.clinic_id,
-        clinicName: c.clinics?.name || 'ClinicVault',
-        userRole:   c.role || 'staff',
+        clinicId:    primary.clinic_id,
+        clinicName:  primary.clinics?.name || 'ClinicVault',
+        userRole:    primary.role || 'staff',
+        userClinics,
       })
-      return c.clinic_id
+      return primary.clinic_id
     }
 
     // 3. First time — create new clinic
@@ -166,10 +182,17 @@ export const useStore = create((set, get) => ({
       .update({ used_at: new Date().toISOString() })
       .eq('id', invite.id)
 
+    const { userClinics } = get()
+    const newClinic = {
+      id:   invite.clinic_id,
+      name: invite.clinics?.name || 'ClinicVault',
+      role: invite.role,
+    }
     set({
-      clinicId:   invite.clinic_id,
-      clinicName: invite.clinics?.name || 'ClinicVault',
-      userRole:   invite.role,
+      clinicId:    invite.clinic_id,
+      clinicName:  invite.clinics?.name || 'ClinicVault',
+      userRole:    invite.role,
+      userClinics: [...userClinics.filter(c => c.id !== invite.clinic_id), newClinic],
     })
 
     return { clinicId: invite.clinic_id }

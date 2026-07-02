@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore'
 import { supabase } from '../lib/supabase'
 import {
   Save, Building2, Users, UserPlus, Trash2,
-  Copy, Check, X, ShieldCheck, Stethoscope, UserRound
+  Copy, Check, X, ShieldCheck, Stethoscope, UserRound, LogIn
 } from 'lucide-react'
 
 const ROLES = [
@@ -66,7 +66,7 @@ function PendingInvitations({ clinicId }) {
 
 // ─── Main SettingsPage ─────────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const { clinicName, clinicId, userRole, user, setClinic } = useStore()
+  const { clinicName, clinicId, userRole, user, setClinic, joinClinic, fetchAll } = useStore()
   const isAdmin = userRole === 'admin'
 
   const [tab, setTab] = useState('clinic')
@@ -81,6 +81,27 @@ export default function SettingsPage() {
   // ── Members
   const [members,        setMembers]        = useState([])
   const [loadingMembers, setLoadingMembers] = useState(false)
+
+  // ── Join another clinic
+  const [joinCode,    setJoinCode]    = useState('')
+  const [joining,     setJoining]     = useState(false)
+  const [joinMsg,     setJoinMsg]     = useState(null) // { type: 'ok'|'err', text }
+
+  async function handleJoinClinic(e) {
+    e.preventDefault()
+    if (!joinCode.trim()) return
+    setJoining(true)
+    setJoinMsg(null)
+    const result = await joinClinic(user?.id, joinCode.trim())
+    if (result?.error) {
+      setJoinMsg({ type: 'err', text: result.error })
+    } else {
+      await fetchAll()
+      setJoinMsg({ type: 'ok', text: 'Berjaya! Anda kini boleh akses klinik baru melalui Sidebar.' })
+      setJoinCode('')
+    }
+    setJoining(false)
+  }
 
   // ── Invite modal
   const [showModal,   setShowModal]   = useState(false)
@@ -272,6 +293,46 @@ export default function SettingsPage() {
               {saving ? 'Menyimpan...' : saved ? '✓ Disimpan!' : 'Simpan Perubahan'}
             </button>
           </form>
+        </div>
+      )}
+
+      {/* ── Sertai Klinik Lain ──────────────────────────────────────────── */}
+      {tab === 'clinic' && (
+        <div className="card p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
+              <LogIn size={20} className="text-teal-600" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-slate-700">Sertai Klinik Lain</h2>
+              <p className="text-xs text-slate-400">Masukkan kod jemputan untuk akses lebih dari satu klinik</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleJoinClinic} className="flex gap-2">
+            <input
+              type="text"
+              className="input font-mono tracking-widest uppercase flex-1"
+              placeholder="cth: A1B2C3D4"
+              maxLength={8}
+              autoComplete="off"
+              value={joinCode}
+              onChange={e => { setJoinCode(e.target.value.toUpperCase()); setJoinMsg(null) }}
+            />
+            <button type="submit" disabled={joining || !joinCode.trim()} className="btn-primary whitespace-nowrap">
+              {joining ? 'Menyertai...' : 'Sertai'}
+            </button>
+          </form>
+
+          {joinMsg && (
+            <div className={`text-sm rounded-lg px-4 py-3 ${
+              joinMsg.type === 'ok'
+                ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                : 'bg-red-50 border border-red-200 text-red-700'
+            }`}>
+              {joinMsg.text}
+            </div>
+          )}
         </div>
       )}
 

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useStore } from '../../store/useStore'
 import { supabase } from '../../lib/supabase'
 import {
-  LayoutDashboard, ArrowLeftRight, FileText, CreditCard, Settings, LogOut, ShieldAlert
+  LayoutDashboard, ArrowLeftRight, FileText, CreditCard, Settings, LogOut, ShieldAlert, Building2
 } from 'lucide-react'
 import logo from '../../assets/logo.png'
 
@@ -23,12 +23,13 @@ const ROLE_COLOR = {
 }
 
 export default function Sidebar({ onClose }) {
-  const { user, clinicName, userRole, isSuperAdmin, allClinics, activeClinicId, setActiveClinic } = useStore()
+  const { user, clinicId, clinicName, userRole, userClinics, switchClinic,
+          isSuperAdmin, allClinics, activeClinicId, setActiveClinic } = useStore()
 
   async function handleLogout() {
     await supabase.auth.signOut()
     useStore.setState({
-      user: null, clinicId: null, userRole: null,
+      user: null, clinicId: null, userRole: null, userClinics: [],
       isSuperAdmin: false, allClinics: [], activeClinicId: null,
       income: [], expense: [], panel: [], documents: [],
     })
@@ -68,6 +69,24 @@ export default function Sidebar({ onClose }) {
           >
             <option value="">Semua Klinik</option>
             {allClinics.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Multi-Clinic Switcher (regular users) */}
+      {!isSuperAdmin && userClinics.length > 1 && (
+        <div className="px-3 pt-3 pb-2 border-b border-slate-700">
+          <label className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold px-1 mb-1 flex items-center gap-1">
+            <Building2 size={9} /> Pilih Klinik
+          </label>
+          <select
+            value={clinicId || ''}
+            onChange={e => { switchClinic(e.target.value); onClose?.() }}
+            className="w-full bg-slate-700 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:outline-none focus:border-blue-400 cursor-pointer"
+          >
+            {userClinics.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
