@@ -9,7 +9,7 @@ export const useStore = create((set, get) => ({
   loading: true,
 
   setUser: (user) => set({ user }),
-  setClinic: (id, name) => set({ clinicId: id, clinicName: name || 'Klinik Saya' }),
+  setClinic: (id, name) => set({ clinicId: id, clinicName: name || 'ClinicVault' }),
   setLoading: (loading) => set({ loading }),
 
   // ── Data ────────────────────────────────────────────────
@@ -52,14 +52,14 @@ export const useStore = create((set, get) => ({
 
     if (memberships?.length) {
       const c = memberships[0]
-      set({ clinicId: c.clinic_id, clinicName: c.clinics?.name || 'Klinik Saya' })
+      set({ clinicId: c.clinic_id, clinicName: c.clinics?.name || 'ClinicVault' })
       return c.clinic_id
     }
 
     // Create new clinic
     const { data: clinic, error } = await supabase
       .from('clinics')
-      .insert({ name: 'Klinik Saya', tax_rate: 24, sst_enabled: false, owner_id: userId })
+      .insert({ name: 'ClinicVault', tax_rate: 24, sst_enabled: false, owner_id: userId })
       .select()
       .single()
 
