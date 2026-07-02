@@ -8,6 +8,14 @@ const INCOME_CATS  = ['consultation', 'medication', 'procedure', 'panel', 'lab',
 const EXPENSE_CATS = ['daily', 'hr', 'supplies', 'utility', 'rent', 'equipment', 'other']
 const PAY_METHODS  = ['cash', 'card', 'qr', 'transfer', 'panel', 'spay', 'tng', 'atome']
 
+const INCOME_PAY_METHODS = [
+  { value: 'cash',     label: 'TUNAI' },
+  { value: 'transfer', label: 'ONLINE TRANSFER / TNG / QR PAY' },
+  { value: 'bnpl',     label: 'ATOME / SPAY LATER' },
+  { value: 'card',     label: 'DEBIT / CREDIT CARD' },
+  { value: 'panel',    label: 'PANEL' },
+]
+
 const CAT_LABELS = {
   consultation: 'Konsultasi', medication: 'Ubat', procedure: 'Prosedur',
   panel: 'Panel', lab: 'Makmal', other: 'Lain-lain',
@@ -58,15 +66,17 @@ export default function TransactionsPage() {
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!form.description || !form.amt || !form.date) return
+    if (form.type === 'expense' && !form.description) return
+    if (!form.amt || !form.date) return
     setSaving(true)
     try {
       const table = form.type
+      const incomePayLabel = INCOME_PAY_METHODS.find(m => m.value === form.pay_type)?.label || form.pay_type
       const row = form.type === 'income'
         ? { clinic_id: clinicId, created_by: user?.id,
-            date: form.date, description: form.description, amt: +form.amt,
-            cat: form.cat || 'other', pay_type: form.pay_type,
-            ref: form.ref || null, notes: form.notes || null }
+            date: form.date, description: incomePayLabel, amt: +form.amt,
+            cat: 'other', pay_type: form.pay_type,
+            ref: null, notes: form.notes || null }
         : { clinic_id: clinicId, created_by: user?.id,
             date: form.date, description: form.description, amt: +form.amt,
             cat: form.cat || 'other', vendor: form.vendor || null,
@@ -228,51 +238,66 @@ export default function TransactionsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="label">Penerangan *</label>
-                <input type="text" className="input" placeholder="Cth: Yuran konsultasi pesakit"
-                  value={form.description} onChange={e => set('description', e.target.value)} required />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              {/* Pendapatan: hanya Kaedah Bayaran */}
+              {form.type === 'income' && (
                 <div>
-                  <label className="label">Kategori</label>
-                  <select className="input" value={form.cat} onChange={e => set('cat', e.target.value)}>
-                    <option value="">Pilih...</option>
-                    {cats.map(c => <option key={c} value={c}>{CAT_LABELS[c]||c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">{form.type === 'income' ? 'Kaedah Bayaran' : 'Kaedah Bayar'}</label>
+                  <label className="label">Kaedah Bayaran</label>
                   <select className="input" value={form.pay_type} onChange={e => set('pay_type', e.target.value)}>
-                    {PAY_METHODS.map(m => <option key={m} value={m}>{m.toUpperCase()}</option>)}
+                    {INCOME_PAY_METHODS.map(m => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
                   </select>
-                </div>
-              </div>
-
-              {form.type === 'expense' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">Vendor</label>
-                    <input type="text" className="input" placeholder="Nama vendor/pembekal"
-                      value={form.vendor} onChange={e => set('vendor', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="label">Potongan Cukai</label>
-                    <select className="input" value={form.tax_deduct} onChange={e => set('tax_deduct', e.target.value)}>
-                      <option value="yes">Ya</option>
-                      <option value="no">Tidak</option>
-                      <option value="partial">Sebahagian</option>
-                    </select>
-                  </div>
                 </div>
               )}
 
-              <div>
-                <label className="label">No. Rujukan</label>
-                <input type="text" className="input" placeholder="No. resit / invois"
-                  value={form.ref} onChange={e => set('ref', e.target.value)} />
-              </div>
+              {/* Perbelanjaan: semua field penuh */}
+              {form.type === 'expense' && (
+                <>
+                  <div>
+                    <label className="label">Penerangan *</label>
+                    <input type="text" className="input" placeholder="Cth: Bayar bil elektrik"
+                      value={form.description} onChange={e => set('description', e.target.value)} required />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">Kategori</label>
+                      <select className="input" value={form.cat} onChange={e => set('cat', e.target.value)}>
+                        <option value="">Pilih...</option>
+                        {EXPENSE_CATS.map(c => <option key={c} value={c}>{CAT_LABELS[c]||c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label">Kaedah Bayar</label>
+                      <select className="input" value={form.pay_type} onChange={e => set('pay_type', e.target.value)}>
+                        {PAY_METHODS.map(m => <option key={m} value={m}>{m.toUpperCase()}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">Vendor</label>
+                      <input type="text" className="input" placeholder="Nama vendor/pembekal"
+                        value={form.vendor} onChange={e => set('vendor', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="label">Potongan Cukai</label>
+                      <select className="input" value={form.tax_deduct} onChange={e => set('tax_deduct', e.target.value)}>
+                        <option value="yes">Ya</option>
+                        <option value="no">Tidak</option>
+                        <option value="partial">Sebahagian</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label">No. Rujukan</label>
+                    <input type="text" className="input" placeholder="No. resit / invois"
+                      value={form.ref} onChange={e => set('ref', e.target.value)} />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="label">Nota</label>
