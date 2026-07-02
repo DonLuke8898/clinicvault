@@ -6,7 +6,10 @@ export const useStore = create((set, get) => ({
   user: null,
   clinicId: null,
   clinicName: 'ClinicVault',
-  userRole: null,   // 'admin' | 'doctor' | 'staff'
+  userRole: null,       // 'admin' | 'doctor' | 'staff' | null
+  isSuperAdmin: false,
+  allClinics: [],       // SA: all clinics in the system
+  activeClinicId: null, // SA: clinic being drilled into (null = overview)
   loading: true,
 
   setUser: (user) => set({ user }),
@@ -24,16 +27,33 @@ export const useStore = create((set, get) => ({
   setPanel:     (data) => set({ panel: data }),
   setDocuments: (data) => set({ documents: data }),
 
-  // ── Fetch all data for current clinic ───────────────────
+  // ── Fetch all data ───────────────────────────────────────
   fetchAll: async () => {
-    const { clinicId } = get()
-    if (!clinicId) return
+    const { clinicId, isSuperAdmin, activeClinicId } = get()
+
+    if (isSuperAdmin && !activeClinicId) {
+      // SA overview: fetch ALL data across all clinics (no clinic_id filter)
+      const [inc, exp, pan, doc] = await Promise.all([
+        supabase.from('income').select('*').order('date', { ascending: false }),
+        supabase.from('expense').select('*').order('date', { ascending: false }),
+        supabase.from('panel').select('*').order('bill_date', { ascending: false }),
+        supabase.from('documents').select('*').order('created_at', { ascending: false }),
+      ])
+      if (inc.data)  set({ income:    inc.data })
+      if (exp.data)  set({ expense:   exp.data })
+      if (pan.data)  set({ panel:     pan.data })
+      if (doc.data)  set({ documents: doc.data })
+      return
+    }
+
+    const targetClinic = activeClinicId || clinicId
+    if (!targetClinic) return
 
     const [inc, exp, pan, doc] = await Promise.all([
-      supabase.from('income').select('*').eq('clinic_id', clinicId).order('date', { ascending: false }),
-      supabase.from('expense').select('*').eq('clinic_id', clinicId).order('date', { ascending: false }),
-      supabase.from('panel').select('*').eq('clinic_id', clinicId).order('bill_date', { ascending: false }),
-      supabase.from('documents').select('*').eq('clinic_id', clinicId).order('created_at', { ascending: false }),
+      supabase.from('income').select('*').eq('clinic_id', targetClinic).order('date', { ascending: false }),
+      supabase.from('expense').select('*').eq('clinic_id', targetClinic).order('date', { ascending: false }),
+      supabase.from('panel').select('*').eq('clinic_id', targetClinic).order('bill_date', { ascending: false }),
+      supabase.from('documents').select('*').eq('clinic_id', targetClinic).order('created_at', { ascending: false }),
     ])
 
     if (inc.data)  set({ income:    inc.data })
@@ -42,9 +62,48 @@ export const useStore = create((set, get) => ({
     if (doc.data)  set({ documents: doc.data })
   },
 
+  // ── SA: Load all clinics ─────────────────────────────────
+  loadAllClinics: async () => {
+    const { data } = await supabase
+      .from('clinics')
+      .select('id, name, address, phone, email')
+      .order('name')
+    if (data) set({ allClinics: data })
+  },
+
+  // ── SA: Switch active clinic (null = back to overview) ───
+  setActiveClinic: async (clinicId) => {
+    if (!clinicId) {
+      set({ activeClinicId: null, clinicId: null, clinicName: 'Super Admin' })
+      await get().fetchAll()
+      return
+    }
+    const { allClinics } = get()
+    const clinic = allClinics.find(c => c.id === clinicId)
+    set({
+      activeClinicId: clinicId,
+      clinicId:       clinicId,
+      clinicName:     clinic?.name || 'Klinik',
+    })
+    await get().fetchAll()
+  },
+
   // ── Ensure clinic exists for user ───────────────────────
   ensureClinic: async (userId) => {
-    // Check if user already has a clinic
+    // 1. Check super admin
+    const { data: saCheck } = await supabase
+      .from('super_admins')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (saCheck) {
+      set({ isSuperAdmin: true, userRole: 'super_admin', clinicName: 'Super Admin' })
+      await get().loadAllClinics()
+      return null
+    }
+
+    // 2. Check if user already has a clinic
     const { data: memberships } = await supabase
       .from('clinic_members')
       .select('clinic_id, role, clinics(id, name)')
@@ -61,7 +120,7 @@ export const useStore = create((set, get) => ({
       return c.clinic_id
     }
 
-    // First time — create new clinic for this user
+    // 3. First time — create new clinic
     const { data: clinic, error } = await supabase
       .from('clinics')
       .insert({ name: 'ClinicVault', tax_rate: 24, sst_enabled: false, owner_id: userId })

@@ -5,7 +5,12 @@ import { Link } from 'react-router-dom'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend
 } from 'recharts'
-import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, Plus } from 'lucide-react'
+import {
+  TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, Plus,
+  Building2, ArrowRight, ShieldAlert
+} from 'lucide-react'
+
+// ─── Shared Components ───────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, icon: Icon, color, trend }) {
   return (
@@ -41,9 +46,161 @@ function getLast6Months() {
   return months
 }
 
-export default function DashboardPage() {
-  const { income, expense, panel, clinicName } = useStore()
+// ─── Super Admin Overview ────────────────────────────────────────────────────
+
+function SuperAdminDashboard() {
+  const { income, expense, panel, allClinics, setActiveClinic } = useStore()
   const thisMonth = today().slice(0, 7)
+
+  const aggregate = useMemo(() => {
+    const totalIncome  = income.reduce((s, r) => s + +r.amt, 0)
+    const totalExpense = expense.reduce((s, r) => s + +r.amt, 0)
+    const mIncome      = income.filter(r => r.date?.startsWith(thisMonth)).reduce((s, r) => s + +r.amt, 0)
+    const mExpense     = expense.filter(r => r.date?.startsWith(thisMonth)).reduce((s, r) => s + +r.amt, 0)
+    const panelPending = panel
+      .filter(r => +r.paid_amt < +r.billed_amt)
+      .reduce((s, r) => s + (+r.billed_amt - +r.paid_amt), 0)
+    return { totalIncome, totalExpense, mIncome, mExpense, panelPending }
+  }, [income, expense, panel, thisMonth])
+
+  const clinicRows = useMemo(() => {
+    return allClinics.map(clinic => {
+      const cInc = income.filter(r => r.clinic_id === clinic.id)
+      const cExp = expense.filter(r => r.clinic_id === clinic.id)
+      const cPan = panel.filter(r => r.clinic_id === clinic.id)
+      const mInc = cInc.filter(r => r.date?.startsWith(thisMonth)).reduce((s, r) => s + +r.amt, 0)
+      const mExp = cExp.filter(r => r.date?.startsWith(thisMonth)).reduce((s, r) => s + +r.amt, 0)
+      const pending = cPan.filter(r => +r.paid_amt < +r.billed_amt).reduce((s, r) => s + (+r.billed_amt - +r.paid_amt), 0)
+      return { ...clinic, mInc, mExp, pending, profit: mInc - mExp }
+    })
+  }, [allClinics, income, expense, panel, thisMonth])
+
+  const chartData = useMemo(() => {
+    const months = getLast6Months()
+    return months.map(({ key, label }) => ({
+      label,
+      Pendapatan:   income.filter(r => r.date?.startsWith(key)).reduce((s, r) => s + +r.amt, 0),
+      Perbelanjaan: expense.filter(r => r.date?.startsWith(key)).reduce((s, r) => s + +r.amt, 0),
+    }))
+  }, [income, expense])
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center">
+          <ShieldAlert size={22} className="text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Super Admin — Semua Klinik</h1>
+          <p className="text-slate-500 text-sm">
+            {new Date().toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+      </div>
+
+      {/* Aggregate Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Jumlah Klinik" value={allClinics.length}
+          icon={Building2} color="bg-violet-500" />
+        <StatCard label="Pendapatan Bulan Ini" value={formatRM(aggregate.mIncome)}
+          sub={`Keseluruhan: ${formatRM(aggregate.totalIncome)}`}
+          icon={TrendingUp} color="bg-emerald-500" />
+        <StatCard label="Perbelanjaan Bulan Ini" value={formatRM(aggregate.mExpense)}
+          sub={`Keseluruhan: ${formatRM(aggregate.totalExpense)}`}
+          icon={TrendingDown} color="bg-red-500" />
+        <StatCard label="Tunggakan Panel (Semua)" value={formatRM(aggregate.panelPending)}
+          icon={Clock} color="bg-amber-500" />
+      </div>
+
+      {/* Chart */}
+      <div className="card p-5">
+        <h2 className="font-semibold text-slate-700 mb-4">Pendapatan vs Perbelanjaan — Semua Klinik (6 Bulan)</h2>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={chartData} barGap={4}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#94a3b8' }} />
+            <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `RM${(v/1000).toFixed(0)}k`} />
+            <Tooltip formatter={(v) => formatRM(v)} />
+            <Legend />
+            <Bar dataKey="Pendapatan"   fill="#10b981" radius={[4,4,0,0]} />
+            <Bar dataKey="Perbelanjaan" fill="#f43f5e" radius={[4,4,0,0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Per-Clinic Table */}
+      <div className="card">
+        <div className="px-5 pt-5 pb-3 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-700">Prestasi Per Klinik — Bulan Ini</h2>
+        </div>
+        {clinicRows.length === 0 ? (
+          <div className="py-12 text-center">
+            <Building2 size={32} className="text-slate-300 mx-auto mb-2" />
+            <p className="text-slate-400 text-sm">Belum ada klinik berdaftar</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Klinik</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Pendapatan</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Perbelanjaan</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Untung</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Tunggakan</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {clinicRows.map(clinic => (
+                  <tr key={clinic.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <Building2 size={14} className="text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-700">{clinic.name}</p>
+                          {clinic.address && <p className="text-xs text-slate-400 truncate max-w-[200px]">{clinic.address}</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-medium text-emerald-600">{formatRM(clinic.mInc)}</td>
+                    <td className="px-4 py-3.5 text-right font-medium text-red-500">{formatRM(clinic.mExp)}</td>
+                    <td className={`px-4 py-3.5 text-right font-bold ${clinic.profit >= 0 ? 'text-slate-800' : 'text-orange-500'}`}>
+                      {formatRM(clinic.profit)}
+                    </td>
+                    <td className="px-4 py-3.5 text-right text-amber-600 font-medium">{formatRM(clinic.pending)}</td>
+                    <td className="px-4 py-3.5 text-right">
+                      <button
+                        onClick={() => setActiveClinic(clinic.id)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Lihat <ArrowRight size={12} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Normal (Clinic) Dashboard ───────────────────────────────────────────────
+
+export default function DashboardPage() {
+  const { income, expense, panel, clinicName, isSuperAdmin, activeClinicId, setActiveClinic } = useStore()
+  const thisMonth = today().slice(0, 7)
+
+  // Show SA overview when Super Admin has no specific clinic selected
+  if (isSuperAdmin && !activeClinicId) {
+    return <SuperAdminDashboard />
+  }
 
   const summary = useMemo(() => {
     const mIncome  = income.filter(r => r.date?.startsWith(thisMonth)).reduce((s, r) => s + +r.amt, 0)
@@ -82,6 +239,14 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          {isSuperAdmin && (
+            <button
+              onClick={() => setActiveClinic(null)}
+              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium mb-1"
+            >
+              ← Semua Klinik
+            </button>
+          )}
           <h1 className="text-2xl font-bold text-slate-800">{clinicName}</h1>
           <p className="text-slate-500 text-sm">
             {new Date().toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -124,7 +289,6 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* Quick Stats */}
         <div className="card p-5 space-y-4">
           <h2 className="font-semibold text-slate-700">Ringkasan Panel</h2>
           {panel.length === 0 ? (
@@ -136,10 +300,10 @@ export default function DashboardPage() {
           ) : (
             <>
               {[
-                { label: 'Submitted', color: 'bg-blue-500', count: panel.filter(p => p.status === 'submitted').length },
-                { label: 'Approved',  color: 'bg-amber-500', count: panel.filter(p => p.status === 'approved').length },
+                { label: 'Submitted', color: 'bg-blue-500',    count: panel.filter(p => p.status === 'submitted').length },
+                { label: 'Approved',  color: 'bg-amber-500',   count: panel.filter(p => p.status === 'approved').length },
                 { label: 'Paid',      color: 'bg-emerald-500', count: panel.filter(p => p.status === 'paid').length },
-                { label: 'Disputed',  color: 'bg-red-500', count: panel.filter(p => p.status === 'disputed').length },
+                { label: 'Disputed',  color: 'bg-red-500',     count: panel.filter(p => p.status === 'disputed').length },
               ].map(({ label, color, count }) => (
                 <div key={label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

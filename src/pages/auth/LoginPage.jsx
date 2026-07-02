@@ -99,7 +99,7 @@ export default function LoginPage() {
               <div>
                 <label className="label">Kod Jemputan <span className="font-normal normal-case text-slate-400">(jika ada)</span></label>
                 <input className="input font-mono tracking-widest uppercase" type="text"
-                  placeholder="cth: A1B2C3D4" maxLength={8}
+                  placeholder="cth: A1B2C3D4" maxLength={8} autoComplete="off" autoCorrect="off"
                   value={inviteCode} onChange={e => setInviteCode(e.target.value.toUpperCase())} />
                 <p className="text-xs text-slate-400 mt-1">Diperuntukkan oleh Admin klinik. Kosongkan jika mendaftar klinik baru.</p>
               </div>
