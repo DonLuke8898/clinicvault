@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useStore } from '../../store/useStore'
 import { supabase } from '../../lib/supabase'
 import { formatRM, formatDate, today } from '../../lib/utils'
-import { Plus, FileText, Trash2, X, AlertTriangle, Clock, CheckCircle } from 'lucide-react'
+import { Plus, FileText, Trash2, X, AlertTriangle, Clock, CheckCircle, Upload, Paperclip } from 'lucide-react'
 
 const CAT_OPTIONS = [
   { value: 'supplier',    label: 'Supplier / Pharmacy' },
@@ -64,6 +64,7 @@ const STATUS_CFG = {
 const EMPTY_FORM = {
   name: '', cat: 'supplier', date: today(), amt: '',
   pay_term: 'cod', status: 'unpaid', notes: '',
+  file_name: '', file_type: '', file_data: '',
 }
 
 export default function DocumentsPage() {
@@ -75,6 +76,20 @@ export default function DocumentsPage() {
   const [search, setSearch]       = useState('')
 
   function setF(field, val) { setForm(f => ({ ...f, [field]: val })) }
+
+  function handleFile(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setForm(f => ({ ...f, file_name: file.name, file_type: file.type, file_data: ev.target.result }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function clearFile() {
+    setForm(f => ({ ...f, file_name: '', file_type: '', file_data: '' }))
+  }
 
   const filtered = useMemo(() => {
     return documents.filter(d => {
@@ -105,7 +120,9 @@ export default function DocumentsPage() {
         due_date,
         status:    form.status,
         notes:     form.notes || null,
-        file_name: null, file_type: null, file_data: null,
+        file_name: form.file_name || null,
+        file_type: form.file_type || null,
+        file_data: form.file_data || null,
       }
       const { error } = await supabase.from('documents').insert(row)
       if (error) throw error
@@ -276,6 +293,15 @@ export default function DocumentsPage() {
                   <p className="text-xs text-slate-400 line-clamp-1 italic">{doc.notes}</p>
                 )}
 
+                {/* Attached file */}
+                {doc.file_name && doc.file_data && (
+                  <a href={doc.file_data} download={doc.file_name}
+                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                    <Paperclip size={12} />
+                    <span className="truncate">{doc.file_name}</span>
+                  </a>
+                )}
+
                 {/* Action */}
                 <button onClick={() => togglePaid(doc)}
                   className={`w-full text-xs py-1.5 justify-center ${
@@ -381,6 +407,30 @@ export default function DocumentsPage() {
                 <textarea className="input resize-none" rows={2} value={form.notes}
                   onChange={e => setF('notes', e.target.value)}
                   placeholder="Nota tambahan..." />
+              </div>
+
+              {/* File Upload */}
+              <div>
+                <label className="label">Upload Fail (JPG / PDF)</label>
+                {form.file_name ? (
+                  <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-3 bg-slate-50">
+                    <Paperclip size={15} className="text-blue-500 flex-shrink-0" />
+                    <span className="text-sm text-slate-700 flex-1 truncate">{form.file_name}</span>
+                    <button type="button" onClick={clearFile}
+                      className="text-slate-400 hover:text-red-500 flex-shrink-0">
+                      <X size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-5 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
+                    <Upload size={20} className="text-slate-400 mb-1.5" />
+                    <span className="text-sm text-slate-500 font-medium">Klik untuk pilih fail</span>
+                    <span className="text-xs text-slate-400 mt-0.5">JPG, PNG, PDF — maks 5MB</span>
+                    <input type="file" className="hidden"
+                      accept="image/jpeg,image/png,application/pdf"
+                      onChange={handleFile} />
+                  </label>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
