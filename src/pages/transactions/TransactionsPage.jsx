@@ -86,19 +86,19 @@ export default function TransactionsPage() {
 
   async function handleSave(e) {
     e.preventDefault()
-    if (form.type === 'expense' && !form.description) return
     if (!form.amt || !form.date) return
     setSaving(true)
     try {
       const table = form.type
       const incomePayLabel = INCOME_PAY_METHODS.find(m => m.value === form.pay_type)?.label || form.pay_type
+      const expenseCatLabel = EXPENSE_CATS_OPTIONS.find(c => c.value === form.cat)?.label || form.cat || 'Perbelanjaan'
       const row = form.type === 'income'
         ? { clinic_id: clinicId, created_by: user?.id,
             date: form.date, description: incomePayLabel, amt: +form.amt,
             cat: 'other', pay_type: form.pay_type,
             ref: null, notes: form.notes || null }
         : { clinic_id: clinicId, created_by: user?.id,
-            date: form.date, description: form.description, amt: +form.amt,
+            date: form.date, description: expenseCatLabel, amt: +form.amt,
             cat: form.cat || 'other', vendor: form.vendor || null,
             ref: form.ref || null, notes: form.notes || null,
             tax_deduct: form.tax_deduct, pay_method: form.pay_type }
@@ -270,15 +270,9 @@ export default function TransactionsPage() {
                 </div>
               )}
 
-              {/* Perbelanjaan: semua field penuh */}
+              {/* Perbelanjaan */}
               {form.type === 'expense' && (
                 <>
-                  <div>
-                    <label className="label">Penerangan *</label>
-                    <input type="text" className="input" placeholder="Cth: Bayar bil elektrik"
-                      value={form.description} onChange={e => set('description', e.target.value)} required />
-                  </div>
-
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="label">Kategori</label>
