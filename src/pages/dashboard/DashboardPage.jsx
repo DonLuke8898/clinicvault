@@ -323,7 +323,7 @@ export default function DashboardPage() {
       <div className="card">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
           <h2 className="font-semibold text-slate-700">Transaksi Terkini</h2>
-          <Link to="/transactions" className="text-blue-600 text-sm font-medium hover:underline">Lihat semua</Link>
+          <Link to="/transactions" className="text-blue-600 text-sm font-medium hover:underline">Lihat Semua</Link>
         </div>
         {recentTx.length === 0 ? (
           <div className="py-12 text-center">
