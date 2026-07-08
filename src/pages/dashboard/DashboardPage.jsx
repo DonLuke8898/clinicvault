@@ -197,11 +197,7 @@ export default function DashboardPage() {
   const { income, expense, panel, clinicName, isSuperAdmin, activeClinicId, setActiveClinic } = useStore()
   const thisMonth = today().slice(0, 7)
 
-  // Show SA overview when Super Admin has no specific clinic selected
-  if (isSuperAdmin && !activeClinicId) {
-    return <SuperAdminDashboard />
-  }
-
+  // All hooks must run unconditionally before any early returns (Rules of Hooks)
   const summary = useMemo(() => {
     const mIncome  = income.filter(r => r.date?.startsWith(thisMonth)).reduce((s, r) => s + +r.amt, 0)
     const mExpense = expense.filter(r => r.date?.startsWith(thisMonth)).reduce((s, r) => s + +r.amt, 0)
@@ -233,6 +229,11 @@ export default function DashboardPage() {
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     return all.slice(0, 8)
   }, [income, expense])
+
+  // Show SA overview when Super Admin has no specific clinic selected
+  if (isSuperAdmin && !activeClinicId) {
+    return <SuperAdminDashboard />
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
