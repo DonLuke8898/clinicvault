@@ -68,7 +68,8 @@ const EMPTY_FORM = {
 }
 
 export default function DocumentsPage() {
-  const { documents, clinicId, user, fetchAll } = useStore()
+  const { documents, clinicId, user, fetchAll, userRole, isSuperAdmin } = useStore()
+  const canAmend = userRole === 'admin' || isSuperAdmin
   const [showForm, setShowForm]   = useState(false)
   const [form, setForm]           = useState(EMPTY_FORM)
   const [saving, setSaving]       = useState(false)
@@ -249,10 +250,12 @@ export default function DocumentsPage() {
                       {doc.name && <p className="text-xs text-slate-400">{catLabel}</p>}
                     </div>
                   </div>
-                  <button onClick={() => handleDelete(doc)}
-                    className="text-slate-200 hover:text-red-400 flex-shrink-0 transition-colors">
-                    <Trash2 size={15} />
-                  </button>
+                  {canAmend && (
+                    <button onClick={() => handleDelete(doc)}
+                      className="text-slate-200 hover:text-red-400 flex-shrink-0 transition-colors">
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Status + Amount */}
@@ -303,15 +306,17 @@ export default function DocumentsPage() {
                 )}
 
                 {/* Action */}
-                <button onClick={() => togglePaid(doc)}
-                  className={`w-full text-xs py-1.5 justify-center ${
-                    status === 'paid' ? 'btn-secondary' : 'btn-primary'
-                  }`}>
-                  {status === 'paid'
-                    ? 'Tandakan Belum Bayar'
-                    : <><CheckCircle size={13} /> Tandakan Dibayar</>
-                  }
-                </button>
+                {canAmend && (
+                  <button onClick={() => togglePaid(doc)}
+                    className={`w-full text-xs py-1.5 justify-center ${
+                      status === 'paid' ? 'btn-secondary' : 'btn-primary'
+                    }`}>
+                    {status === 'paid'
+                      ? 'Tandakan Belum Bayar'
+                      : <><CheckCircle size={13} /> Tandakan Dibayar</>
+                    }
+                  </button>
+                )}
               </div>
             )
           })}

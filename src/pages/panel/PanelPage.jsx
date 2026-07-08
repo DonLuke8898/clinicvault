@@ -19,7 +19,8 @@ const EMPTY_FORM = {
 }
 
 export default function PanelPage() {
-  const { panel, clinicId, user, fetchAll } = useStore()
+  const { panel, clinicId, user, fetchAll, userRole, isSuperAdmin } = useStore()
+  const canAmend = userRole === 'admin' || isSuperAdmin
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -188,9 +189,11 @@ export default function PanelPage() {
                     <p className="font-bold text-slate-800">{p.name}</p>
                     <p className="text-xs text-slate-400">{p.invoice_no}</p>
                   </div>
-                  <button onClick={() => handleDelete(p)} className="text-slate-200 hover:text-red-400">
-                    <Trash2 size={15} />
-                  </button>
+                  {canAmend && (
+                    <button onClick={() => handleDelete(p)} className="text-slate-200 hover:text-red-400">
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -218,25 +221,33 @@ export default function PanelPage() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex gap-2">
-                  {s.next && (
-                    <button onClick={() => advanceStatus(p)}
-                      className="btn-primary text-xs py-1.5 flex-1 justify-center gap-1">
-                      <ArrowRight size={12} /> {STATUS[s.next]?.label}
-                    </button>
-                  )}
-                  {p.status !== 'disputed' && p.status !== 'paid' && (
-                    <button onClick={() => markDisputed(p)}
-                      className="btn-secondary text-xs py-1.5 flex-1 justify-center">
-                      Dispute
-                    </button>
-                  )}
-                  {p.status === 'paid' && (
+                {canAmend ? (
+                  <div className="flex gap-2">
+                    {s.next && (
+                      <button onClick={() => advanceStatus(p)}
+                        className="btn-primary text-xs py-1.5 flex-1 justify-center gap-1">
+                        <ArrowRight size={12} /> {STATUS[s.next]?.label}
+                      </button>
+                    )}
+                    {p.status !== 'disputed' && p.status !== 'paid' && (
+                      <button onClick={() => markDisputed(p)}
+                        className="btn-secondary text-xs py-1.5 flex-1 justify-center">
+                        Dispute
+                      </button>
+                    )}
+                    {p.status === 'paid' && (
+                      <div className="flex items-center gap-1 text-emerald-600 text-xs font-semibold">
+                        <CheckCircle2 size={14} /> Selesai
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  p.status === 'paid' && (
                     <div className="flex items-center gap-1 text-emerald-600 text-xs font-semibold">
                       <CheckCircle2 size={14} /> Selesai
                     </div>
-                  )}
-                </div>
+                  )
+                )}
               </div>
             )
           })}

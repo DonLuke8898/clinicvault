@@ -268,41 +268,53 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="label">Nama Klinik *</label>
-                <input type="text" className="input" required
+                <input type="text" required
+                  className={`input ${!isAdmin ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdmin}
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div className="sm:col-span-2">
                 <label className="label">Alamat</label>
-                <textarea className="input" rows={2}
+                <textarea rows={2}
+                  className={`input ${!isAdmin ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdmin}
                   placeholder="No. 1, Jalan Contoh, 50000 Kuala Lumpur"
                   value={form.address}
                   onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
               </div>
               <div>
                 <label className="label">No. Telefon</label>
-                <input type="tel" className="input"
+                <input type="tel"
+                  className={`input ${!isAdmin ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdmin}
                   placeholder="03-1234 5678"
                   value={form.phone}
                   onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
               </div>
               <div>
                 <label className="label">E-mel Klinik</label>
-                <input type="email" className="input"
+                <input type="email"
+                  className={`input ${!isAdmin ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdmin}
                   placeholder="klinik@example.com"
                   value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
               </div>
               <div>
                 <label className="label">No. Pendaftaran KKM</label>
-                <input type="text" className="input"
+                <input type="text"
+                  className={`input ${!isAdmin ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdmin}
                   placeholder="KKM/00000/01"
                   value={form.kkm_no}
                   onChange={e => setForm(f => ({ ...f, kkm_no: e.target.value }))} />
               </div>
               <div>
                 <label className="label">No. Pendaftaran SSM</label>
-                <input type="text" className="input"
+                <input type="text"
+                  className={`input ${!isAdmin ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdmin}
                   placeholder="1234567-X"
                   value={form.ssm_no}
                   onChange={e => setForm(f => ({ ...f, ssm_no: e.target.value }))} />
@@ -310,13 +322,15 @@ export default function SettingsPage() {
             </div>
 
             {!isAdmin && (
-              <p className="text-xs text-slate-400 italic">Hanya Admin boleh mengemaskini maklumat klinik.</p>
+              <p className="text-xs text-slate-400 italic">Hanya Admin / Super Admin boleh mengemaskini maklumat klinik.</p>
             )}
 
-            <button type="submit" disabled={saving || !isAdmin} className="btn-primary">
-              <Save size={16} />
-              {saving ? 'Menyimpan...' : saved ? '✓ Disimpan!' : 'Simpan Perubahan'}
-            </button>
+            {isAdmin && (
+              <button type="submit" disabled={saving} className="btn-primary">
+                <Save size={16} />
+                {saving ? 'Menyimpan...' : saved ? '✓ Disimpan!' : 'Simpan Perubahan'}
+              </button>
+            )}
           </form>
         </div>
       )}

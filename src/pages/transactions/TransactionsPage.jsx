@@ -49,7 +49,8 @@ const EMPTY_FORM = {
 }
 
 export default function TransactionsPage() {
-  const { income, expense, clinicId, user, fetchAll } = useStore()
+  const { income, expense, clinicId, user, fetchAll, userRole, isSuperAdmin } = useStore()
+  const canAmend = userRole === 'admin' || isSuperAdmin
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -212,10 +213,12 @@ export default function TransactionsPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <button onClick={() => handleDelete(tx)} disabled={deleting === tx.id}
-                    className="text-slate-300 hover:text-red-500 transition-colors">
-                    <Trash2 size={15} />
-                  </button>
+                  {canAmend && (
+                    <button onClick={() => handleDelete(tx)} disabled={deleting === tx.id}
+                      className="text-slate-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
