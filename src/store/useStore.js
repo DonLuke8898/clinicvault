@@ -100,6 +100,9 @@ export const useStore = create((set, get) => ({
 
   // ── Ensure clinic exists for user ───────────────────────
   ensureClinic: async (userId) => {
+    // 0. Ensure profile exists (handles users created before the trigger was set up)
+    await supabase.from('profiles').upsert({ id: userId }, { onConflict: 'id', ignoreDuplicates: true })
+
     // 1. Check super admin
     const { data: saCheck } = await supabase
       .from('super_admins')
