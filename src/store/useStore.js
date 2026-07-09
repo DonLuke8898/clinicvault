@@ -142,7 +142,7 @@ export const useStore = create((set, get) => ({
     // 3. First time — create new clinic
     const { data: clinic, error } = await supabase
       .from('clinics')
-      .insert({ name: 'ClinicVault', tax_rate: 24, sst_enabled: false, owner_id: userId })
+      .insert({ name: 'ClinicVault', tax_rate: 24, sst_enabled: false })
       .select()
       .single()
 
