@@ -36,21 +36,36 @@ function daysDiff(dateStr) {
   return Math.round((due - now) / 86400000)
 }
 
-function inferTermLabel(dateStr, dueDateStr) {
-  if (!dateStr || !dueDateStr) return null
-  const diff = Math.round((new Date(dueDateStr) - new Date(dateStr)) / 86400000)
-  if (diff <= 0)  return 'COD'
-  if (diff <= 35) return '1 Bulan'
-  if (diff <= 65) return '2 Bulan'
-  return '3 Bulan'
+// Encode pay_term + status + user notes into the notes JSON field
+// (due_date and status columns don't exist in DB schema — stored here instead)
+function encodeNotes(pay_term, status, userNotes) {
+  return JSON.stringify({ _pt: pay_term || 'cod', _s: status || 'unpaid', _n: userNotes || '' })
+}
+
+function decodeNotes(notesStr) {
+  try {
+    const obj = JSON.parse(notesStr || '{}')
+    if (obj._pt !== undefined) return obj  // has our metadata
+  } catch {}
+  // Legacy plain text notes — treat as no metadata
+  return { _pt: 'cod', _s: 'unpaid', _n: notesStr || '' }
+}
+
+function getDocDueDate(doc) {
+  const meta = decodeNotes(doc.notes)
+  const term = PAY_TERMS.find(t => t.value === (meta._pt || 'cod'))
+  if (!doc.date || (term?.days ?? 0) === 0) return null
+  return addDays(doc.date, term.days)
 }
 
 function getDocStatus(doc) {
-  if (doc.status === 'paid') return 'paid'
-  if (!doc.due_date) return 'unpaid'
-  const diff = daysDiff(doc.due_date)
-  if (diff < 0)   return 'overdue'
-  if (diff <= 7)  return 'near'
+  const meta = decodeNotes(doc.notes)
+  if (meta._s === 'paid') return 'paid'
+  const due_date = getDocDueDate(doc)
+  if (!due_date) return 'unpaid'
+  const diff = daysDiff(due_date)
+  if (diff < 0)  return 'overdue'
+  if (diff <= 7) return 'near'
   return 'unpaid'
 }
 
@@ -110,17 +125,15 @@ export default function DocumentsPage() {
     if (!form.amt) return alert('Sila masukkan harga.')
     setSaving(true)
     try {
-      const term     = PAY_TERMS.find(t => t.value === form.pay_term)
-      const due_date = addDays(form.date, term?.days ?? 0)
       const row = {
         clinic_id: clinicId, created_by: user?.id,
-        name:      form.name || null,
+        // Fallback name to category label so NOT NULL constraint is satisfied
+        name:      form.name || CAT_OPTIONS.find(c => c.value === form.cat)?.label || 'Dokumen',
         type:      form.cat,
         date:      form.date || null,
         amt:       +form.amt,
-        due_date,
-        status:    form.status,
-        notes:     form.notes || null,
+        // Encode pay_term + status + user notes into the notes JSON field
+        notes:     encodeNotes(form.pay_term, form.status, form.notes),
         file_name: form.file_name || null,
         file_type: form.file_type || null,
         file_data: form.file_data || null,
@@ -138,8 +151,10 @@ export default function DocumentsPage() {
   }
 
   async function togglePaid(doc) {
-    const newStatus = doc.status === 'paid' ? 'unpaid' : 'paid'
-    await supabase.from('documents').update({ status: newStatus }).eq('id', doc.id)
+    const meta = decodeNotes(doc.notes)
+    const newStatus = meta._s === 'paid' ? 'unpaid' : 'paid'
+    const newNotes = encodeNotes(meta._pt || 'cod', newStatus, meta._n || '')
+    await supabase.from('documents').update({ notes: newNotes }).eq('id', doc.id)
     await fetchAll()
   }
 
@@ -224,8 +239,11 @@ export default function DocumentsPage() {
             const status    = getDocStatus(doc)
             const { label, cls, border } = STATUS_CFG[status] || STATUS_CFG.unpaid
             const catLabel  = CAT_OPTIONS.find(c => c.value === doc.type)?.label || doc.type || '—'
-            const termLabel = inferTermLabel(doc.date, doc.due_date)
-            const diff      = doc.due_date ? daysDiff(doc.due_date) : null
+            const meta      = decodeNotes(doc.notes)
+            const termLabel = PAY_TERMS.find(t => t.value === meta._pt)?.label || null
+            const due_date  = getDocDueDate(doc)
+            const diff      = due_date ? daysDiff(due_date) : null
+            const userNotes = meta._n || ''
 
             return (
               <div key={doc.id} className={`card p-5 space-y-3 border ${border}`}>
@@ -276,7 +294,7 @@ export default function DocumentsPage() {
                       <span className="text-slate-600 font-medium">{termLabel}</span>
                     </div>
                   )}
-                  {doc.due_date && (
+                  {due_date && (
                     <div className="flex justify-between">
                       <span>Tarikh Akhir</span>
                       <span className={`font-medium ${
@@ -284,7 +302,7 @@ export default function DocumentsPage() {
                         : diff <= 7  ? 'text-amber-500'
                         : 'text-slate-600'
                       }`}>
-                        {formatDate(doc.due_date)}
+                        {formatDate(due_date)}
                         {diff !== null && diff < 0  && ` (${Math.abs(diff)}h)`}
                         {diff !== null && diff >= 0 && diff <= 7 && ` (${diff}h lagi)`}
                       </span>
@@ -292,8 +310,8 @@ export default function DocumentsPage() {
                   )}
                 </div>
 
-                {doc.notes && (
-                  <p className="text-xs text-slate-400 line-clamp-1 italic">{doc.notes}</p>
+                {userNotes && (
+                  <p className="text-xs text-slate-400 line-clamp-1 italic">{userNotes}</p>
                 )}
 
                 {/* Attached file */}
