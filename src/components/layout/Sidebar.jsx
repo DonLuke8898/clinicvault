@@ -8,8 +8,8 @@ import logo from '../../assets/logo.png'
 
 const NAV = [
   { to: '/',             icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/transactions',   icon: ArrowLeftRight, label: 'Transaksi' },
-  { to: '/daily-account', icon: BookOpen,       label: 'Daily Account' },
+  { to: '/transactions',   icon: ArrowLeftRight, label: 'Cash Lejer' },
+  { to: '/daily-account', icon: BookOpen,       label: 'Akaun Harian' },
   { to: '/documents',    icon: FileText,         label: 'Invois & Resit' },
   { to: '/panel',        icon: CreditCard,       label: 'Panel & Klaim' },
   { to: '/settings',     icon: Settings,         label: 'Tetapan' },

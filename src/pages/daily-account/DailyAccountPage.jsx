@@ -158,9 +158,9 @@ export default function DailyAccountPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <BookOpen size={20} className="text-blue-600" /> Daily Account
+            <BookOpen size={20} className="text-blue-600" /> Akaun Harian
           </h1>
-          <p className="text-sm text-slate-500">Rekod harian kutipan &amp; perbelanjaan klinik</p>
+          <p className="text-sm text-slate-500">Rekod kutipan &amp; perbelanjaan harian klinik</p>
         </div>
         <div className="flex items-center gap-2">
           <input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
