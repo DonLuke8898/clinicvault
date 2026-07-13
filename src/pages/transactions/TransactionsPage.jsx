@@ -19,7 +19,6 @@ const EXPENSE_CATS_OPTIONS = [
   { value: 'stationery', label: 'STATIONERY' },
   { value: 'printing',   label: 'PRINTING' },
   { value: 'delivery',   label: 'LALAMOVE / GRABEXPRESS' },
-  { value: 'serah',      label: 'SERAH TUNAI KE DR' },
   { value: 'other',      label: 'LAIN-LAIN' },
 ]
 
@@ -118,18 +117,25 @@ export default function TransactionsPage() {
         })
         if (error) throw error
 
+      } else if (form.type === 'serah') {
+        const { error } = await supabase.from('expense').insert({
+          clinic_id: clinicId, created_by: user?.id,
+          date: form.date,
+          description: `TRANSFER IN BANK RM${(+form.amt).toFixed(2)}`,
+          amt: +form.amt, cat: 'serah',
+          ref: form.ref || null, notes: form.notes || null,
+          tax_deduct: 'no', pay_method: 'cash',
+        })
+        if (error) throw error
+
       } else {
-        const isSerah = form.cat === 'serah'
-        const catLabel = isSerah
-          ? `SERAH TUNAI KE DR RM${(+form.amt).toFixed(2)}`
-          : EXPENSE_CATS_OPTIONS.find(c => c.value === form.cat)?.label || form.cat || 'Perbelanjaan'
+        const catLabel = EXPENSE_CATS_OPTIONS.find(c => c.value === form.cat)?.label || form.cat || 'Perbelanjaan'
         const { error } = await supabase.from('expense').insert({
           clinic_id: clinicId, created_by: user?.id,
           date: form.date, description: catLabel, amt: +form.amt,
           cat: form.cat || 'other',
           ref: form.ref || null, notes: form.notes || null,
-          tax_deduct: isSerah ? 'no' : form.tax_deduct,
-          pay_method: isSerah ? 'cash' : form.pay_type,
+          tax_deduct: form.tax_deduct, pay_method: form.pay_type,
         })
         if (error) throw error
       }
@@ -294,14 +300,15 @@ export default function TransactionsPage() {
               </button>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-4">
-              {/* 2-way type toggle */}
+              {/* 3-way type toggle */}
               <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
                 {[
-                  { v: 'income',  l: '↑ Cash In',  cls: 'bg-emerald-500 text-white shadow' },
-                  { v: 'expense', l: '↓ Cash Out', cls: 'bg-red-500 text-white shadow' },
+                  { v: 'income',  l: '↑ Cash In',          cls: 'bg-emerald-500 text-white shadow' },
+                  { v: 'expense', l: '↓ Cash Out',         cls: 'bg-red-500 text-white shadow' },
+                  { v: 'serah',   l: '→ Transfer In Bank', cls: 'bg-blue-500 text-white shadow' },
                 ].map(({ v, l, cls }) => (
                   <button type="button" key={v} onClick={() => set('type', v)}
-                    className={`flex-1 py-2 rounded-md text-sm font-semibold transition-all ${
+                    className={`flex-1 py-2 rounded-md text-xs font-semibold transition-all ${
                       form.type === v ? cls : 'text-slate-500 hover:text-slate-700'
                     }`}>
                     {l}
@@ -374,6 +381,15 @@ export default function TransactionsPage() {
                 </>
               )}
 
+              {/* TRANSFER IN BANK: ref field */}
+              {form.type === 'serah' && (
+                <div>
+                  <label className="label">No. Rujukan / Slip Bank</label>
+                  <input type="text" className="input" placeholder="cth: slip bank, no. resit"
+                    value={form.ref} onChange={e => set('ref', e.target.value)} />
+                </div>
+              )}
+
               {/* Notes / Remarks */}
               <div>
                 <label className="label">
@@ -381,7 +397,7 @@ export default function TransactionsPage() {
                 </label>
                 <textarea className="input resize-none" rows={2}
                   placeholder={form.type === 'expense'
-                    ? form.cat === 'serah' ? 'Nota (optional)' : 'Senarai item (cth: grab RM5, tealive RM8, ubat RM20...)'
+                    ? 'Senarai item (cth: grab RM5, tealive RM8, ubat RM20...)'
                     : 'Nota tambahan (optional)'}
                   value={form.notes} onChange={e => set('notes', e.target.value)} />
               </div>
