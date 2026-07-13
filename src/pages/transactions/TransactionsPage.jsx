@@ -87,7 +87,7 @@ export default function TransactionsPage() {
     let bal = 0
     const withBal = sorted.map(tx => {
       if (tx._type === 'income') bal += +tx.amt
-      else bal -= +tx.amt   // expense AND serah both reduce petty cash
+      else if (tx.cat !== 'serah') bal -= +tx.amt  // serah tidak terlibat dalam baki
       return { ...tx, _balance: bal }
     })
     return withBal.reverse()
@@ -97,7 +97,7 @@ export default function TransactionsPage() {
     const inc   = allTx.filter(r => r._type === 'income').reduce((s, r) => s + +r.amt, 0)
     const serah = allTx.filter(r => r.cat === 'serah').reduce((s, r) => s + +r.amt, 0)
     const exp   = allTx.filter(r => r._type === 'expense' && r.cat !== 'serah').reduce((s, r) => s + +r.amt, 0)
-    return { income: inc, expense: exp, serah, balance: inc - exp - serah }
+    return { income: inc, expense: exp, serah, balance: inc - exp }
   }, [allTx])
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })) }
