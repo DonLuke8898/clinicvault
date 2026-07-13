@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useStore } from '../../store/useStore'
 import { supabase } from '../../lib/supabase'
 import { formatRM, formatDate, today } from '../../lib/utils'
-import { Plus, Search, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, Search, Trash2, X } from 'lucide-react'
 
 const INCOME_PAY_METHODS = [
   { value: 'cash',     label: 'TUNAI' },
@@ -55,6 +55,8 @@ export default function TransactionsPage() {
   const [filterType, setFilterType] = useState('all')
   const [filterMonth, setFilterMonth] = useState(today().slice(0, 7))
   const [deleting, setDeleting] = useState(null)
+  const [editId,   setEditId]   = useState(null)   // { id, table }
+
 
   const allTx = useMemo(() => {
     const all = [
@@ -102,46 +104,95 @@ export default function TransactionsPage() {
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })) }
 
+  function handleEdit(tx) {
+    const isSerah  = tx.cat === 'serah'
+    const isIncome = tx._type === 'income'
+    setEditId({ id: tx.id, table: tx._type })
+    setForm({
+      type:       isIncome ? 'income' : isSerah ? 'serah' : 'expense',
+      date:       tx.date || today(),
+      amt:        tx.amt ?? '',
+      cat:        tx.cat || '',
+      pay_type:   isIncome ? (tx.pay_type || 'cash') : (tx.pay_method || 'cash'),
+      ref:        tx.ref || '',
+      notes:      tx.notes || '',
+      tax_deduct: tx.tax_deduct || 'no',
+    })
+    setShowForm(true)
+  }
+
   async function handleSave(e) {
     e.preventDefault()
     if (!form.amt || !form.date) return
     setSaving(true)
     try {
-      if (form.type === 'income') {
-        const label = INCOME_PAY_METHODS.find(m => m.value === form.pay_type)?.label || form.pay_type
-        const { error } = await supabase.from('income').insert({
-          clinic_id: clinicId, created_by: user?.id,
-          date: form.date, description: label, amt: +form.amt,
-          cat: 'other', pay_type: form.pay_type,
-          ref: null, notes: form.notes || null,
-        })
-        if (error) throw error
-
-      } else if (form.type === 'serah') {
-        const { error } = await supabase.from('expense').insert({
-          clinic_id: clinicId, created_by: user?.id,
-          date: form.date,
-          description: `TRANSFER IN BANK RM${(+form.amt).toFixed(2)}`,
-          amt: +form.amt, cat: 'serah',
-          ref: form.ref || null, notes: form.notes || null,
-          tax_deduct: 'no', pay_method: 'cash',
-        })
-        if (error) throw error
-
+      if (editId) {
+        /* ─── UPDATE existing record ─── */
+        const { id, table } = editId
+        if (table === 'income') {
+          const label = INCOME_PAY_METHODS.find(m => m.value === form.pay_type)?.label || form.pay_type
+          const { error } = await supabase.from('income').update({
+            date: form.date, description: label, amt: +form.amt,
+            pay_type: form.pay_type, notes: form.notes || null,
+          }).eq('id', id)
+          if (error) throw error
+        } else {
+          if (form.type === 'serah') {
+            const { error } = await supabase.from('expense').update({
+              date: form.date,
+              description: `TRANSFER IN BANK RM${(+form.amt).toFixed(2)}`,
+              amt: +form.amt, ref: form.ref || null, notes: form.notes || null,
+            }).eq('id', id)
+            if (error) throw error
+          } else {
+            const catLabel = EXPENSE_CATS_OPTIONS.find(c => c.value === form.cat)?.label || form.cat || 'Perbelanjaan'
+            const { error } = await supabase.from('expense').update({
+              date: form.date, description: catLabel, amt: +form.amt,
+              cat: form.cat || 'other', ref: form.ref || null,
+              notes: form.notes || null, tax_deduct: form.tax_deduct, pay_method: form.pay_type,
+            }).eq('id', id)
+            if (error) throw error
+          }
+        }
       } else {
-        const catLabel = EXPENSE_CATS_OPTIONS.find(c => c.value === form.cat)?.label || form.cat || 'Perbelanjaan'
-        const { error } = await supabase.from('expense').insert({
-          clinic_id: clinicId, created_by: user?.id,
-          date: form.date, description: catLabel, amt: +form.amt,
-          cat: form.cat || 'other',
-          ref: form.ref || null, notes: form.notes || null,
-          tax_deduct: form.tax_deduct, pay_method: form.pay_type,
-        })
-        if (error) throw error
+        /* ─── INSERT new record ─── */
+        if (form.type === 'income') {
+          const label = INCOME_PAY_METHODS.find(m => m.value === form.pay_type)?.label || form.pay_type
+          const { error } = await supabase.from('income').insert({
+            clinic_id: clinicId, created_by: user?.id,
+            date: form.date, description: label, amt: +form.amt,
+            cat: 'other', pay_type: form.pay_type,
+            ref: null, notes: form.notes || null,
+          })
+          if (error) throw error
+
+        } else if (form.type === 'serah') {
+          const { error } = await supabase.from('expense').insert({
+            clinic_id: clinicId, created_by: user?.id,
+            date: form.date,
+            description: `TRANSFER IN BANK RM${(+form.amt).toFixed(2)}`,
+            amt: +form.amt, cat: 'serah',
+            ref: form.ref || null, notes: form.notes || null,
+            tax_deduct: 'no', pay_method: 'cash',
+          })
+          if (error) throw error
+
+        } else {
+          const catLabel = EXPENSE_CATS_OPTIONS.find(c => c.value === form.cat)?.label || form.cat || 'Perbelanjaan'
+          const { error } = await supabase.from('expense').insert({
+            clinic_id: clinicId, created_by: user?.id,
+            date: form.date, description: catLabel, amt: +form.amt,
+            cat: form.cat || 'other',
+            ref: form.ref || null, notes: form.notes || null,
+            tax_deduct: form.tax_deduct, pay_method: form.pay_type,
+          })
+          if (error) throw error
+        }
       }
 
       await fetchAll()
       setForm(EMPTY_FORM)
+      setEditId(null)
       setShowForm(false)
     } catch (err) {
       alert('Ralat: ' + err.message)
@@ -171,7 +222,7 @@ export default function TransactionsPage() {
           )}
         </div>
         {canAmend && (
-          <button onClick={() => { setShowForm(true); setForm(EMPTY_FORM) }} className="btn-primary">
+          <button onClick={() => { setShowForm(true); setForm(EMPTY_FORM); setEditId(null) }} className="btn-primary">
             <Plus size={16} /> Tambah Rekod
           </button>
         )}
@@ -276,10 +327,16 @@ export default function TransactionsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {canAmend && (
-                      <button onClick={() => handleDelete(tx)} disabled={deleting === tx.id}
-                        className="text-slate-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleEdit(tx)}
+                          className="text-slate-300 hover:text-blue-500 transition-colors">
+                          <Pencil size={14} />
+                        </button>
+                        <button onClick={() => handleDelete(tx)} disabled={deleting === tx.id}
+                          className="text-slate-300 hover:text-red-500 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -294,14 +351,15 @@ export default function TransactionsPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
-              <h2 className="text-lg font-bold text-slate-800">Tambah Rekod</h2>
-              <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600">
+              <h2 className="text-lg font-bold text-slate-800">{editId ? 'Kemaskini Rekod' : 'Tambah Rekod'}</h2>
+              <button onClick={() => { setShowForm(false); setEditId(null); setForm(EMPTY_FORM) }}
+                className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-4">
-              {/* 3-way type toggle */}
-              <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+              {/* 3-way type toggle — locked when editing */}
+              <div className={`flex gap-1 bg-slate-100 rounded-lg p-1 ${editId ? 'opacity-60 pointer-events-none' : ''}`}>
                 {[
                   { v: 'income',  l: '↑ Cash In',          cls: 'bg-emerald-500 text-white shadow' },
                   { v: 'expense', l: '↓ Cash Out',         cls: 'bg-red-500 text-white shadow' },
@@ -403,11 +461,12 @@ export default function TransactionsPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1 justify-center">
+                <button type="button" onClick={() => { setShowForm(false); setEditId(null); setForm(EMPTY_FORM) }}
+                  className="btn-secondary flex-1 justify-center">
                   Batal
                 </button>
                 <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">
-                  {saving ? 'Menyimpan...' : 'Simpan Rekod'}
+                  {saving ? 'Menyimpan...' : editId ? 'Kemaskini' : 'Simpan Rekod'}
                 </button>
               </div>
             </form>
