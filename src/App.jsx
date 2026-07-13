@@ -10,6 +10,7 @@ import TransactionsPage from './pages/transactions/TransactionsPage'
 import DocumentsPage from './pages/documents/DocumentsPage'
 import PanelPage from './pages/panel/PanelPage'
 import SettingsPage from './pages/SettingsPage'
+import DailyAccountPage from './pages/daily-account/DailyAccountPage'
 
 function Spinner() {
   return (
@@ -73,6 +74,7 @@ export default function App() {
               <Route path="transactions" element={<TransactionsPage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="panel" element={<PanelPage />} />
+              <Route path="daily-account" element={<DailyAccountPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
