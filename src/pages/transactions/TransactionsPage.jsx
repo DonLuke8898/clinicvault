@@ -37,7 +37,7 @@ const CAT_LABELS = {
   medicine: 'Medicine/Consumables', clinic: 'Clinic Items',
   locum: 'Locum & Incentive', stationery: 'Stationery',
   printing: 'Printing', delivery: 'Lalamove/GrabExpress',
-  serah: 'Serah Tunai → Bank',
+  serah: 'Transfer In Bank',
 }
 
 const EMPTY_FORM = {
@@ -182,7 +182,7 @@ export default function TransactionsPage() {
         {[
           { label: 'Cash In',      value: totals.income,  color: 'text-emerald-600' },
           { label: 'Cash Out',     value: totals.expense, color: 'text-red-500' },
-          { label: 'Serah → Bank', value: totals.serah,   color: 'text-blue-600' },
+          { label: 'Transfer In Bank', value: totals.serah,   color: 'text-blue-600' },
           { label: 'Baki Tunai',   value: totals.balance,
             color: totals.balance >= 0 ? 'text-slate-800' : 'text-orange-500' },
         ].map(({ label, value, color }) => (
@@ -205,7 +205,7 @@ export default function TransactionsPage() {
             { v: 'all',     l: 'Semua' },
             { v: 'income',  l: 'Cash In' },
             { v: 'expense', l: 'Cash Out' },
-            { v: 'serah',   l: 'Serah' },
+            { v: 'serah',   l: 'Transfer In Bank' },
           ].map(({ v, l }) => (
             <button key={v} onClick={() => setFilterType(v)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
@@ -233,7 +233,7 @@ export default function TransactionsPage() {
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Butiran</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-emerald-600 uppercase tracking-wide w-28">Cash In</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-red-500 uppercase tracking-wide w-28">Cash Out</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-blue-600 uppercase tracking-wide w-28 hidden md:table-cell">Serah</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-blue-600 uppercase tracking-wide w-28 hidden md:table-cell">Transfer In Bank</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-700 uppercase tracking-wide w-28">Baki</th>
               <th className="px-4 py-3 w-10"></th>
             </tr>
