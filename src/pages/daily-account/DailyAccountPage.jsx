@@ -21,6 +21,7 @@ function fmtFull(n) {
 const EMPTY_FORM = {
   date: today(), time_slot: '', subject: '',
   cash_collection: '', panel_collection: '', online_transfer: '', debit_credit: '',
+  atome_spaylater: '',
   locum_cash: '', locum_transfer: '', locum_insentif: '',
   expenses: '', is_holiday: false, holiday_name: '', notes: '',
 }
@@ -69,12 +70,13 @@ export default function DailyAccountPage() {
       if (!r.is_holiday) {
         const coll = (+r.cash_collection || 0) + (+r.panel_collection || 0)
                    + (+r.online_transfer || 0) + (+r.debit_credit || 0)
+                   + (+r.atome_spaylater || 0)
         const out  = (+r.locum_cash || 0) + (+r.locum_transfer || 0)
                    + (+r.locum_insentif || 0) + (+r.expenses || 0)
         bal += coll - out
       }
       return { ...r, _total: !r.is_holiday
-        ? (+r.cash_collection||0)+( +r.panel_collection||0)+(+r.online_transfer||0)+(+r.debit_credit||0)
+        ? (+r.cash_collection||0)+(+r.panel_collection||0)+(+r.online_transfer||0)+(+r.debit_credit||0)+(+r.atome_spaylater||0)
         : 0,
         _balance: bal }
     })
@@ -86,11 +88,12 @@ export default function DailyAccountPage() {
     const s    = f => live.reduce((a, r) => a + (+r[f] || 0), 0)
     const cash  = s('cash_collection'), panel  = s('panel_collection')
     const onl   = s('online_transfer'),  deb    = s('debit_credit')
+    const atome = s('atome_spaylater')
     const lc    = s('locum_cash'),       lt     = s('locum_transfer')
     const li    = s('locum_insentif'),   exp    = s('expenses')
-    const total = cash + panel + onl + deb
+    const total = cash + panel + onl + deb + atome
     const out   = lc + lt + li + exp
-    return { cash, panel, online: onl, debit: deb, total, locum: lc+lt+li, expenses: exp, balance: total - out }
+    return { cash, panel, online: onl, debit: deb, atome, total, locum: lc+lt+li, expenses: exp, balance: total - out }
   }, [records])
 
   // ── CRUD ─────────────────────────────────────────────────────────────────
@@ -102,6 +105,7 @@ export default function DailyAccountPage() {
       date: r.date, time_slot: r.time_slot || '', subject: r.subject || '',
       cash_collection: r.cash_collection || '', panel_collection: r.panel_collection || '',
       online_transfer: r.online_transfer || '', debit_credit: r.debit_credit || '',
+      atome_spaylater: r.atome_spaylater || '',
       locum_cash: r.locum_cash || '', locum_transfer: r.locum_transfer || '',
       locum_insentif: r.locum_insentif || '', expenses: r.expenses || '',
       is_holiday: r.is_holiday || false, holiday_name: r.holiday_name || '',
@@ -123,6 +127,7 @@ export default function DailyAccountPage() {
         panel_collection: +form.panel_collection || 0,
         online_transfer:  +form.online_transfer  || 0,
         debit_credit:     +form.debit_credit     || 0,
+        atome_spaylater:  +form.atome_spaylater  || 0,
         locum_cash:       +form.locum_cash       || 0,
         locum_transfer:   +form.locum_transfer   || 0,
         locum_insentif:   +form.locum_insentif   || 0,
@@ -150,6 +155,7 @@ export default function DailyAccountPage() {
   const set      = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const formTotal = (+form.cash_collection||0)+(+form.panel_collection||0)
                   +(+form.online_transfer||0)+(+form.debit_credit||0)
+                  +(+form.atome_spaylater||0)
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
@@ -197,15 +203,16 @@ export default function DailyAccountPage() {
       )}
 
       {/* ── Summary Cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {[
-          { label: 'Cash',         val: totals.cash,     cls: 'text-emerald-600' },
-          { label: 'Panel',        val: totals.panel,    cls: 'text-blue-600' },
-          { label: 'Online',       val: totals.online,   cls: 'text-violet-600' },
-          { label: 'Debit / Card', val: totals.debit,    cls: 'text-cyan-600' },
-          { label: 'Total Kutipan',val: totals.total,    cls: 'text-indigo-700 font-bold' },
-          { label: 'Locum + Exp',  val: totals.locum + totals.expenses, cls: 'text-red-600' },
-          { label: 'Balance',      val: totals.balance,  cls: totals.balance >= 0 ? 'text-slate-800 font-bold' : 'text-orange-600 font-bold' },
+          { label: 'Cash',           val: totals.cash,     cls: 'text-emerald-600' },
+          { label: 'Panel',          val: totals.panel,    cls: 'text-blue-600' },
+          { label: 'Online',         val: totals.online,   cls: 'text-violet-600' },
+          { label: 'Debit / Card',   val: totals.debit,    cls: 'text-cyan-600' },
+          { label: 'Atome/SpayLater',val: totals.atome,    cls: 'text-pink-600' },
+          { label: 'Total Kutipan',  val: totals.total,    cls: 'text-indigo-700 font-bold' },
+          { label: 'Locum + Exp',    val: totals.locum + totals.expenses, cls: 'text-red-600' },
+          { label: 'Balance',        val: totals.balance,  cls: totals.balance >= 0 ? 'text-slate-800 font-bold' : 'text-orange-600 font-bold' },
         ].map(({ label, val, cls }) => (
           <div key={label} className="bg-white rounded-xl p-3 shadow-sm border border-slate-100">
             <p className="text-[11px] text-slate-400 mb-1">{label}</p>
@@ -227,6 +234,7 @@ export default function DailyAccountPage() {
                 <th className="text-right  px-3 py-3 font-semibold text-blue-700   whitespace-nowrap">Panel</th>
                 <th className="text-right  px-3 py-3 font-semibold text-violet-700 whitespace-nowrap">Online</th>
                 <th className="text-right  px-3 py-3 font-semibold text-cyan-700   whitespace-nowrap">Debit/Card</th>
+                <th className="text-right  px-3 py-3 font-semibold text-pink-700   whitespace-nowrap hidden lg:table-cell">Atome/SpayL</th>
                 <th className="text-right  px-3 py-3 font-semibold text-indigo-700 bg-indigo-50 whitespace-nowrap">Total Kutipan</th>
                 <th className="text-right  px-3 py-3 font-semibold text-orange-600 whitespace-nowrap">Locum Cash</th>
                 <th className="text-right  px-3 py-3 font-semibold text-orange-600 whitespace-nowrap hidden lg:table-cell">Locum Trans</th>
@@ -238,9 +246,9 @@ export default function DailyAccountPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={14} className="text-center py-12 text-slate-400">Memuatkan...</td></tr>
+                <tr><td colSpan={15} className="text-center py-12 text-slate-400">Memuatkan...</td></tr>
               ) : rowsWithBal.length === 0 ? (
-                <tr><td colSpan={14} className="text-center py-12 text-slate-400">
+                <tr><td colSpan={15} className="text-center py-12 text-slate-400">
                   Tiada rekod untuk bulan ini. Klik <strong>Tambah Rekod</strong> untuk mula.
                 </td></tr>
               ) : rowsWithBal.map(r => {
@@ -252,7 +260,7 @@ export default function DailyAccountPage() {
                         <span className="font-semibold text-amber-800 block">{r.date}</span>
                         <span className="text-amber-600 text-[10px]">{dayName(r.date)}</span>
                       </td>
-                      <td colSpan={11} className="px-3 py-2.5 text-center font-bold text-amber-700 uppercase tracking-widest">
+                      <td colSpan={12} className="px-3 py-2.5 text-center font-bold text-amber-700 uppercase tracking-widest">
                         🏖️ {r.holiday_name}
                       </td>
                       <td className="px-3 py-2.5 text-right bg-slate-50 font-bold text-slate-700">
@@ -281,6 +289,7 @@ export default function DailyAccountPage() {
                     <td className="px-3 py-2.5 text-right text-blue-700   font-medium">{fmt(r.panel_collection)}</td>
                     <td className="px-3 py-2.5 text-right text-violet-700 font-medium">{fmt(r.online_transfer)}</td>
                     <td className="px-3 py-2.5 text-right text-cyan-700   font-medium">{fmt(r.debit_credit)}</td>
+                    <td className="px-3 py-2.5 text-right text-pink-600   font-medium hidden lg:table-cell">{fmt(r.atome_spaylater)}</td>
                     <td className="px-3 py-2.5 text-right bg-indigo-50/60 font-bold text-indigo-700">
                       {r._total > 0 ? fmtFull(r._total) : ''}
                     </td>
@@ -380,6 +389,7 @@ export default function DailyAccountPage() {
                         { label: 'Panel Collection',   key: 'panel_collection', cls: 'text-blue-700   border-blue-300   focus:ring-blue-400'    },
                         { label: 'Online Transfer',    key: 'online_transfer',  cls: 'text-violet-700 border-violet-300 focus:ring-violet-400'  },
                         { label: 'Debit / Credit Card',key: 'debit_credit',     cls: 'text-cyan-700   border-cyan-300   focus:ring-cyan-400'    },
+                        { label: 'Atome / SpayLater',  key: 'atome_spaylater',  cls: 'text-pink-700   border-pink-300   focus:ring-pink-400'    },
                       ].map(({ label, key, cls }) => (
                         <div key={key}>
                           <label className={`block text-[11px] font-semibold mb-1 ${cls.split(' ')[0]}`}>{label}</label>
