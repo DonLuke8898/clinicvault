@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useStore } from '../../store/useStore'
-import { BookOpen, Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
+import { BookOpen, Plus, Pencil, Trash2, AlertTriangle, Building2 } from 'lucide-react'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const today      = () => new Date().toISOString().slice(0, 10)
@@ -27,7 +27,8 @@ const EMPTY_FORM = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function DailyAccountPage() {
-  const { clinicId, user } = useStore()
+  const { clinicId, activeClinicId, isSuperAdmin, allClinics, setActiveClinic, user } = useStore()
+  const targetClinic = activeClinicId || clinicId
 
   const [records,     setRecords]     = useState([])
   const [loading,     setLoading]     = useState(true)
@@ -40,7 +41,7 @@ export default function DailyAccountPage() {
 
   // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchRecords = useCallback(async () => {
-    if (!clinicId) return
+    if (!targetClinic) { setLoading(false); return }
     setLoading(true)
     try {
       const from = filterMonth + '-01'
@@ -48,7 +49,7 @@ export default function DailyAccountPage() {
       const { data, error } = await supabase
         .from('daily_account')
         .select('*')
-        .eq('clinic_id', clinicId)
+        .eq('clinic_id', targetClinic)
         .gte('date', from)
         .lte('date', to)
         .order('date',       { ascending: true })
@@ -57,7 +58,7 @@ export default function DailyAccountPage() {
       setRecords(data || [])
     } catch (e) { console.error(e) }
     finally     { setLoading(false) }
-  }, [clinicId, filterMonth])
+  }, [targetClinic, filterMonth])
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
 
@@ -116,7 +117,7 @@ export default function DailyAccountPage() {
     setSaving(true)
     try {
       const payload = {
-        clinic_id: clinicId, created_by: user?.id,
+        clinic_id: targetClinic, created_by: user?.id,
         date: form.date, time_slot: form.time_slot || null, subject: form.subject || null,
         cash_collection:  +form.cash_collection  || 0,
         panel_collection: +form.panel_collection || 0,
@@ -162,15 +163,38 @@ export default function DailyAccountPage() {
           </h1>
           <p className="text-sm text-slate-500">Rekod kutipan &amp; perbelanjaan harian klinik</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {isSuperAdmin && (
+            <div className="flex items-center gap-1.5">
+              <Building2 size={14} className="text-slate-400" />
+              <select
+                value={activeClinicId || ''}
+                onChange={e => setActiveClinic(e.target.value || null)}
+                className="border border-slate-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">— Pilih Klinik —</option>
+                {allClinics.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <input type="month" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <button onClick={openAdd}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+          <button onClick={openAdd} disabled={!targetClinic}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             <Plus size={16} /> Tambah Rekod
           </button>
         </div>
       </div>
+
+      {/* ── SA: no clinic selected prompt ── */}
+      {isSuperAdmin && !targetClinic && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-center gap-3 text-amber-800">
+          <Building2 size={18} className="text-amber-500 flex-shrink-0" />
+          <p className="text-sm">Pilih klinik dari dropdown di atas atau dari menu sidebar untuk melihat akaun harian.</p>
+        </div>
+      )}
 
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
